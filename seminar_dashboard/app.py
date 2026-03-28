@@ -436,7 +436,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     rows = []
     order_rows = []
 
-    for _, row in attendees.iterrows():
+    sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None sem["alt_mobile_clean"] = sem[c_altmob].apply(clean_mobile) if c_altmob else None if "alt_mobile_clean" not in sem.columns:     sem["alt_mobile_clean"] = None  sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0 sem["attended_flag"] = (     sem[c_attended].astype(str).str.strip().str.upper().isin(["YES", "TRUE", "1", "Y"])     if c_attended else False )  attendees = sem[     (         sem["attended_flag"] |         (sem["seat_book_amount"] > 0)     ) & (         sem["mobile_clean"].notna() |         sem["alt_mobile_clean"].notna()     ) ].copy().reset_index(drop=True)
         mob = row["mobile_clean"]
         alt_mob = row.get("alt_mobile_clean", None)
         match_mobile = mob or alt_mob
