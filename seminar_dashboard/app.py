@@ -101,11 +101,33 @@ def fmt_inr(n):
 
 def load_excel_or_csv(file):
     """Load xlsx/xls/csv from an UploadedFile object."""
-    name = file.name.lower()
-    if name.endswith(".csv"):
-        return pd.read_csv(file)
-    else:
-        return pd.read_excel(file, sheet_name=0)
+   def load_excel_or_csv(file_obj, filename=None):
+    """
+    Supports both CSV and Excel files from BytesIO or UploadedFile.
+    Automatically detects type using filename or content fallback.
+    """
+    name = (filename or "").lower()
+
+    try:
+        # ✅ CSV handling
+        if name.endswith(".csv"):
+            return pd.read_csv(file_obj)
+
+        # ✅ Excel handling
+        elif name.endswith((".xlsx", ".xls")):
+            return pd.read_excel(file_obj, sheet_name=0)
+
+        # ✅ Fallback (auto-detect)
+        else:
+            try:
+                return pd.read_excel(file_obj, sheet_name=0)
+            except Exception:
+                file_obj.seek(0)
+                return pd.read_csv(file_obj)
+
+    except Exception as e:
+        file_obj.seek(0)
+        raise ValueError(f"Error reading file ({filename}): {e}")
 
 # ─────────────────────────────────────────────
 # COLUMN DETECTION
@@ -132,7 +154,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes,
     Cache key uses file names + sizes (passed as strings).
     """
     # ── SEMINAR ──────────────────────────────
-    sem = load_excel_or_csv(io.BytesIO(sem_bytes))
+    sem = load_excel_or_csv(io.BytesIO(sem_bytes), sem_name)
     sem.columns = [str(c).strip() for c in sem.columns]
 
     c_mobile   = detect_col(sem, ["Mobile","Phone","mobile","phone","Contact"])
@@ -154,7 +176,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes,
     attendees = sem[sem["attended_flag"]].copy().reset_index(drop=True)
 
     # ── CONVERSION ───────────────────────────
-    conv = load_excel_or_csv(io.BytesIO(conv_bytes))
+    conv = load_excel_or_csv(io.BytesIO(conv_bytes), conv_name)
     conv.columns = [str(c).strip() for c in conv.columns]
 
     cc_mobile   = detect_col(conv, ["phone","Phone","mobile","Mobile","Contact"])
@@ -178,7 +200,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes,
     conv["service_name_clean"]= conv[cc_service].astype(str).str.strip() if cc_service else ""
 
     # ── LEADS ────────────────────────────────
-    leads = load_excel_or_csv(io.BytesIO(leads_bytes))
+    leads = load_excel_or_csv(io.BytesIO(leads_bytes), leads_name)
     leads.columns = [str(c).strip() for c in leads.columns]
 
     lc_mobile   = detect_col(leads, ["phone","Phone","mobile","Mobile"])
