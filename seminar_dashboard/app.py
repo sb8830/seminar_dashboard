@@ -144,7 +144,8 @@ button[data-testid="stBaseButton-secondary"] {
 </style>
 """, unsafe_allow_html=True)
 
-COMBO_COURSE = "Power Of Trading & Investing Combo Course"
+COMBO_COURSE = "PTI Course" 
+COMBO_MATCH = "Power Of Trading & Investing Combo Course"
 CHART_COLORS = [
     "#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b",
     "#ef4444", "#f97316", "#ec4899", "#14b8a6", "#a855f7",
@@ -485,7 +486,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
 
         if not valid.empty:
             entry["converted"] = True
-            combo = valid[valid["service_name_clean"].str.contains("Power Of Trading", na=False, case=False)]
+            combo = valid[valid["service_name_clean"].str.contains(COMBO_MATCH, na=False, case=False)]
             primary = combo.iloc[0] if not combo.empty else valid.iloc[0]
 
             entry["primary_course"] = primary["service_name_clean"]
@@ -1101,7 +1102,7 @@ def render_courses(fdf):
 # COMBO CROSS-SELL
 # ─────────────────────────────────────────────
 def render_combo(fdf, orders_df):
-    combo_buyers = fdf[fdf["primary_course"].str.contains("Power Of Trading", na=False, case=False)]
+    combo_buyers = fdf[fdf["primary_course"].str.contains(COMBO_MATCH, na=False, case=False)]
     with_other = combo_buyers[combo_buyers["additional_courses"].apply(lambda x: len(x) if isinstance(x, list) else 0) > 0]
 
     total_add_paid = with_other["additional_paid"].sum()
@@ -1137,7 +1138,7 @@ def render_combo(fdf, orders_df):
 
         c1, c2 = st.columns(2)
         with c1:
-            fig = px.bar(ac_counts, x="Count", y="additional_courses", orientation="h", title="Top Additional Courses After Combo", color_discrete_sequence=CHART_COLORS)
+            fig = px.bar(ac_counts, x="Count", y="additional_courses", orientation="h", title="Top Additional Courses After PTI Course", color_discrete_sequence=CHART_COLORS)
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, margin=dict(t=50, b=10, l=10, r=10), height=340, yaxis_title="")
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1154,7 +1155,7 @@ def render_combo(fdf, orders_df):
 
         c1, c2 = st.columns(2)
         with c1:
-            fig = px.bar(add_summary.head(10), x="Students", y="course", orientation="h", title="Top Additional Courses After Combo", color="Students", color_continuous_scale=["#1e2d4a", "#6366f1"])
+            fig = px.bar(add_summary.head(10), x="Students", y="course", orientation="h", title="Top Additional Courses After PTI Course", color="Students", color_continuous_scale=["#1e2d4a", "#6366f1"])
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, margin=dict(t=50, b=10, l=10, r=10), height=340, yaxis_title="")
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1372,7 +1373,7 @@ def main():
     tabs = st.tabs([
         "📊 Overview",
         "📚 Course Analysis",
-        "🔗 Combo Cross-Sell",
+        "🔗 PTI Cross-Sell",
         "🎯 Lead Intelligence",
         "🗺️ Student Journey",
         "📋 Data Tables",
@@ -1394,7 +1395,7 @@ def main():
     with tabs[2]:
         render_combo(fdf, filtered_orders)
         st.markdown("---")
-        combo_df = fdf[fdf["primary_course"].astype(str).str.contains("Power Of Trading", na=False, case=False)].copy()
+        combo_df = fdf[fdf["primary_course"].astype(str).str.contains(COMBO_MATCH, na=False, case=False)].copy()
         render_section_student_details("Combo Cross-Sell", combo_df, extra_cols=["additional_courses", "additional_paid"], key_prefix="combo")
 
     with tabs[3]:
