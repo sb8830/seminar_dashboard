@@ -1098,7 +1098,71 @@ def render_journey(fdf):
 # ─────────────────────────────────────────────
 # DATA TABLES
 # ─────────────────────────────────────────────
-def render_tables(fdf, orders_df):
+def render_filters_top(df):
+    st.markdown('<div class="section-header">🔧 Filters</div>', unsafe_allow_html=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    sel_date = col1.selectbox("Seminar Date", ["All"] + sorted(df["seminar_date_str"].unique().tolist()))
+    sel_place = col2.multiselect("Location", sorted(df["place"].dropna().unique()))
+    sel_session = col3.multiselect("Session", sorted(df["session"].dropna().unique()))
+    sel_trainer = col4.multiselect("Trainer", sorted(df["trainer"].dropna().unique()))
+
+    col5, col6, col7, col8 = st.columns(4)
+
+    sel_conv = col5.selectbox("Converted", ["All", "Yes", "No"])
+    sel_course = col6.multiselect("Primary Course", sorted(df["primary_course"].dropna().unique()))
+    sel_due = col7.selectbox("Due Filter", ["All", "Due = 0", "Has Due"])
+    sel_lead = col8.multiselect("Lead Source", sorted(df["lead_source"].dropna().unique()))
+
+    col9, col10 = st.columns(2)
+
+    paid_range = col9.slider(
+        "Paid Amount (₹)",
+        0,
+        int(df["primary_paid"].max()) if df["primary_paid"].max() > 0 else 100000,
+        (0, int(df["primary_paid"].max()) if df["primary_paid"].max() > 0 else 100000)
+    )
+
+    sel_webinar = col10.multiselect("Lead Type", sorted(df["webinar_type"].dropna().unique()))
+
+    # APPLY FILTERS
+    fdf = df.copy()
+
+    if sel_date != "All":
+        fdf = fdf[fdf["seminar_date_str"] == sel_date]
+
+    if sel_place:
+        fdf = fdf[fdf["place"].isin(sel_place)]
+
+    if sel_session:
+        fdf = fdf[fdf["session"].isin(sel_session)]
+
+    if sel_trainer:
+        fdf = fdf[fdf["trainer"].isin(sel_trainer)]
+
+    if sel_conv == "Yes":
+        fdf = fdf[fdf["converted"]]
+    elif sel_conv == "No":
+        fdf = fdf[~fdf["converted"]]
+
+    if sel_course:
+        fdf = fdf[fdf["primary_course"].isin(sel_course)]
+
+    if sel_due == "Due = 0":
+        fdf = fdf[fdf["primary_due"] <= 0]
+    elif sel_due == "Has Due":
+        fdf = fdf[fdf["primary_due"] > 0]
+
+    fdf = fdf[(fdf["primary_paid"] >= paid_range[0]) & (fdf["primary_paid"] <= paid_range[1])]
+
+    if sel_lead:
+        fdf = fdf[fdf["lead_source"].isin(sel_lead)]
+
+    if sel_webinar:
+        fdf = fdf[fdf["webinar_type"].isin(sel_webinar)]
+
+    return fdf
     tab1, tab2, tab3 = st.tabs(["📋 Attendee Master", "✅ Converted Students", "📦 All Orders Summary"])
 
     with tab1:
@@ -1185,7 +1249,7 @@ def main():
         st.session_state["orders_df"] = None
         st.rerun()
 
-    fdf = render_filters(df)
+    fdf = render_filters_top(df)
     filtered_orders = filter_orders_by_attendees(orders_df, fdf)
 
     if fdf.empty:
