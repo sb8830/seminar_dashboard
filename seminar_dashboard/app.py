@@ -333,7 +333,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         if c_attended else False
     )
 
-    attendees = sem[((sem["attended_flag"]) | (sem["seat_book_amount"] > 0)) & ((sem["mobile_clean"].notna()) | (sem["alt_mobile_clean"].notna()))].copy().reset_index(drop=True)
+    attendees = sem[((sem["attended_flag"]) | (sem["seat_book_amount"] > 0)) & ((sem["mobile_clean"].notna()) | (KeyError: 'alt_mobile_clean'.notna()))].copy().reset_index(drop=True)
 
     # ── CONVERSION ───────────────────────────
     conv = load_excel_or_csv(io.BytesIO(conv_bytes), conv_name)
