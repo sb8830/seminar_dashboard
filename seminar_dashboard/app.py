@@ -447,12 +447,11 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     for _, row in attendees.iterrows():
         mob = row.get("mobile_clean")
         alt_mob = row.get("alt_mobile_clean")
-        possible_mobiles = [m for m in [mob, alt_mob] if m]
         sem_dt = row["seminar_date"]
 
         entry = {
             "name": str(row.get(c_name, "")).strip() if c_name else "",
-            "mobile": match_mobile or "",
+            "mobile": (mob or alt_mob or ""),
             "place": str(row.get(c_place, "")).strip() if c_place else "",
             "trainer": str(row.get(c_trainer, "")).strip() if c_trainer else "",
             "seminar_date": sem_dt,
