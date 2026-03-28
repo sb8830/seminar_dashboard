@@ -325,7 +325,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     c_amount   = detect_col(sem, ["Amount Paid", "amount paid", "Seat Book Amount", "Seat Amount", "Seminar Amount", "Amount"])
 
     sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None
-    sem["alt_mobile_clean"] = sem[c_altmob].apply(clean_mobile) if c_altmob else None
+    c_altmob = detect_col(sem,["Alternate Number", "Alt Mobile", "alternate_number", "Alternate Mobile", "Alternative Mobile"])
     sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT
     sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0
     sem["attended_flag"] = (
