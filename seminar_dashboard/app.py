@@ -669,6 +669,78 @@ def filter_orders_by_attendees(orders_df, fdf):
     return orders_df[orders_df["mobile"].astype(str).isin(mobiles)].copy()
 
 
+
+# ─────────────────────────────────────────────
+# FILTERS ON MAIN PAGE
+# ─────────────────────────────────────────────
+def render_filters_top(df):
+    st.markdown('<div class="section-header">🔧 Filters</div>', unsafe_allow_html=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+    dates = ["All"] + sorted([d for d in df["seminar_date_str"].dropna().unique().tolist() if d])
+    sel_date = col1.selectbox("Seminar Date", dates)
+    sel_place = col2.multiselect("Location", sorted(df["place"].dropna().astype(str).unique()))
+    sel_session = col3.multiselect("Session", sorted(df["session"].dropna().astype(str).unique()))
+    sel_trainer = col4.multiselect("Trainer", sorted(df["trainer"].dropna().astype(str).unique()))
+
+    col5, col6, col7, col8 = st.columns(4)
+    sel_conv = col5.selectbox("Converted", ["All", "Yes", "No"])
+    sel_course = col6.multiselect("Primary Course", sorted(df["primary_course"].dropna().astype(str).unique()))
+    sel_due = col7.selectbox("Due Filter", ["All", "Due = 0", "Has Due"])
+    sel_lead = col8.multiselect("Lead Source", sorted(df["lead_source"].dropna().astype(str).unique()))
+
+    col9, col10, col11, col12 = st.columns(4)
+    max_paid = int(df["primary_paid"].max()) if df["primary_paid"].max() > 0 else 100000
+    paid_range = col9.slider("Paid Amount (₹)", 0, max_paid, (0, max_paid))
+    sel_webinar = col10.multiselect("Lead Type", sorted(df["webinar_type"].dropna().astype(str).unique()))
+    sel_campaign = col11.multiselect("Campaign", sorted(df["campaign_name"].dropna().astype(str).unique()))
+    sel_stage = col12.multiselect("Stage", sorted(df["stage_name"].dropna().astype(str).unique()))
+
+    col13, col14, col15, col16 = st.columns(4)
+    sel_owner = col13.multiselect("Lead Owner", sorted(df["lead_owner"].dropna().astype(str).unique()))
+    sel_state = col14.multiselect("State", sorted(df["state"].dropna().astype(str).unique()))
+    sel_attempt = col15.multiselect("Attempted", sorted(df["attempted"].dropna().astype(str).unique()))
+    reset = col16.button("Reset Filters", use_container_width=True)
+
+    if reset:
+        st.rerun()
+
+    fdf = df.copy()
+    if sel_date != "All":
+        fdf = fdf[fdf["seminar_date_str"] == sel_date]
+    if sel_place:
+        fdf = fdf[fdf["place"].isin(sel_place)]
+    if sel_session:
+        fdf = fdf[fdf["session"].isin(sel_session)]
+    if sel_trainer:
+        fdf = fdf[fdf["trainer"].isin(sel_trainer)]
+    if sel_conv == "Yes":
+        fdf = fdf[fdf["converted"]]
+    elif sel_conv == "No":
+        fdf = fdf[~fdf["converted"]]
+    if sel_course:
+        fdf = fdf[fdf["primary_course"].isin(sel_course)]
+    if sel_due == "Due = 0":
+        fdf = fdf[fdf["primary_due"] <= 0]
+    elif sel_due == "Has Due":
+        fdf = fdf[fdf["primary_due"] > 0]
+    fdf = fdf[(fdf["primary_paid"] >= paid_range[0]) & (fdf["primary_paid"] <= paid_range[1])]
+    if sel_lead:
+        fdf = fdf[fdf["lead_source"].isin(sel_lead)]
+    if sel_webinar:
+        fdf = fdf[fdf["webinar_type"].isin(sel_webinar)]
+    if sel_campaign:
+        fdf = fdf[fdf["campaign_name"].isin(sel_campaign)]
+    if sel_stage:
+        fdf = fdf[fdf["stage_name"].isin(sel_stage)]
+    if sel_owner:
+        fdf = fdf[fdf["lead_owner"].isin(sel_owner)]
+    if sel_state:
+        fdf = fdf[fdf["state"].isin(sel_state)]
+    if sel_attempt:
+        fdf = fdf[fdf["attempted"].isin(sel_attempt)]
+    return fdf
+
 # ─────────────────────────────────────────────
 # KPI ROW
 # ─────────────────────────────────────────────
@@ -1098,71 +1170,7 @@ def render_journey(fdf):
 # ─────────────────────────────────────────────
 # DATA TABLES
 # ─────────────────────────────────────────────
-def render_filters_top(df):
-    st.markdown('<div class="section-header">🔧 Filters</div>', unsafe_allow_html=True)
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    sel_date = col1.selectbox("Seminar Date", ["All"] + sorted(df["seminar_date_str"].unique().tolist()))
-    sel_place = col2.multiselect("Location", sorted(df["place"].dropna().unique()))
-    sel_session = col3.multiselect("Session", sorted(df["session"].dropna().unique()))
-    sel_trainer = col4.multiselect("Trainer", sorted(df["trainer"].dropna().unique()))
-
-    col5, col6, col7, col8 = st.columns(4)
-
-    sel_conv = col5.selectbox("Converted", ["All", "Yes", "No"])
-    sel_course = col6.multiselect("Primary Course", sorted(df["primary_course"].dropna().unique()))
-    sel_due = col7.selectbox("Due Filter", ["All", "Due = 0", "Has Due"])
-    sel_lead = col8.multiselect("Lead Source", sorted(df["lead_source"].dropna().unique()))
-
-    col9, col10 = st.columns(2)
-
-    paid_range = col9.slider(
-        "Paid Amount (₹)",
-        0,
-        int(df["primary_paid"].max()) if df["primary_paid"].max() > 0 else 100000,
-        (0, int(df["primary_paid"].max()) if df["primary_paid"].max() > 0 else 100000)
-    )
-
-    sel_webinar = col10.multiselect("Lead Type", sorted(df["webinar_type"].dropna().unique()))
-
-    # APPLY FILTERS
-    fdf = df.copy()
-
-    if sel_date != "All":
-        fdf = fdf[fdf["seminar_date_str"] == sel_date]
-
-    if sel_place:
-        fdf = fdf[fdf["place"].isin(sel_place)]
-
-    if sel_session:
-        fdf = fdf[fdf["session"].isin(sel_session)]
-
-    if sel_trainer:
-        fdf = fdf[fdf["trainer"].isin(sel_trainer)]
-
-    if sel_conv == "Yes":
-        fdf = fdf[fdf["converted"]]
-    elif sel_conv == "No":
-        fdf = fdf[~fdf["converted"]]
-
-    if sel_course:
-        fdf = fdf[fdf["primary_course"].isin(sel_course)]
-
-    if sel_due == "Due = 0":
-        fdf = fdf[fdf["primary_due"] <= 0]
-    elif sel_due == "Has Due":
-        fdf = fdf[fdf["primary_due"] > 0]
-
-    fdf = fdf[(fdf["primary_paid"] >= paid_range[0]) & (fdf["primary_paid"] <= paid_range[1])]
-
-    if sel_lead:
-        fdf = fdf[fdf["lead_source"].isin(sel_lead)]
-
-    if sel_webinar:
-        fdf = fdf[fdf["webinar_type"].isin(sel_webinar)]
-
-    return fdf
+def render_tables(fdf, orders_df):
     tab1, tab2, tab3 = st.tabs(["📋 Attendee Master", "✅ Converted Students", "📦 All Orders Summary"])
 
     with tab1:
