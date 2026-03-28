@@ -649,6 +649,181 @@ def filter_orders_by_attendees(orders_df, fdf):
     keep = set(fdf["mobile"].dropna().astype(str))
     return orders_df[orders_df["mobile"].astype(str).isin(keep)].copy()
 
+
+
+# ─────────────────────────────────────────────
+# RENDERERS
+# ─────────────────────────────────────────────
+def render_kpis(fdf):
+    conv = fdf[fdf["converted"]]
+    total = len(fdf)
+    n_conv = len(conv)
+    rate = f"{(n_conv/total*100):.1f}%" if total else "0%"
+    t_paid = conv["primary_paid"].sum()
+    t_due = conv["primary_due"].sum()
+    fp = len(conv[conv["primary_due"] <= 0])
+    hd = len(conv[conv["primary_due"] > 0])
+    uniq_c = fdf["primary_course"].replace("", pd.NA).dropna().nunique()
+    wbn = len(fdf[fdf["webinar_type"] == "Webinar"])
+    non_wbn = len(fdf[fdf["webinar_type"] == "Non Webinar"])
+    add_rev = fdf["additional_paid"].sum()
+    seat_book_count = len(fdf[fdf["seat_book_amount"] > 0]) if "seat_book_amount" in fdf.columns else 0
+    seat_book_amount = fdf["seat_book_amount"].sum() if "seat_book_amount" in fdf.columns else 0
+
+    cols = st.columns(5)
+    cards = [
+        ("Total Attendees", total, "Filtered seminar attendees", "#6366f1"),
+        ("Converted", n_conv, "Post-seminar conversions", "#10b981"),
+        ("Conversion Rate", rate, "Attend → Purchase rate", "#06b6d4"),
+        ("Total Paid Amount", fmt_inr(t_paid), "Excl. GST", "#f59e0b"),
+        ("Total Due", fmt_inr(t_due), "Outstanding dues", "#ef4444"),
+    ]
+    for i, (lbl, val, sub, clr) in enumerate(cards):
+        cols[i].markdown(kpi_card(lbl, val, sub, clr), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    seat_cols = st.columns(2)
+    seat_cols[0].markdown(kpi_card("Seminar Seat Booked Count", seat_book_count, "From seminar updated file", "#22c55e"), unsafe_allow_html=True)
+    seat_cols[1].markdown(kpi_card("Seminar Seat Booked Amount", fmt_inr(seat_book_amount), "Seat amount collected", "#14b8a6"), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    cols2 = st.columns(5)
+    cards2 = [
+        ("Fully Paid", fp, "Due ≤ 0", "#10b981"),
+        ("Has Due", hd, "Pending balance", "#ef4444"),
+        ("Unique Courses", uniq_c, "Distinct courses bought", "#8b5cf6"),
+        ("Webinar Leads", wbn, "From webinar source", "#06b6d4"),
+        ("Non-Webinar Leads", non_wbn, "Offline / walk-in", "#f97316"),
+    ]
+    for i, (lbl, val, sub, clr) in enumerate(cards2):
+        cols2[i].markdown(kpi_card(lbl, val, sub, clr), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    cols3 = st.columns(5)
+    cols3[0].markdown(kpi_card("Additional Revenue", fmt_inr(add_rev), "Cross-sell purchases", "#a855f7"), unsafe_allow_html=True)
+    cols3[1].markdown(kpi_card("Avg Paid / Student", fmt_inr(t_paid/n_conv if n_conv else 0), "Per converted student", "#3b82f6"), unsafe_allow_html=True)
+    cols3[2].markdown(kpi_card("Total Revenue", fmt_inr(t_paid + add_rev), "Primary + additional", "#f59e0b"), unsafe_allow_html=True)
+    cols3[3].markdown(kpi_card("Attempted Leads", len(fdf[fdf["attempted"] == "Attempted"]), "Out of matched leads", "#10b981"), unsafe_allow_html=True)
+    cols3[4].markdown(kpi_card("Unattempted Leads", len(fdf[fdf["attempted"] == "Unattempted"]), "Not yet contacted", "#ef4444"), unsafe_allow_html=True)
+
+def render_overview(fdf):
+    st.markdown('<div class="section-header">📅 Trends & Location Analysis</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    bydate = fdf.groupby("seminar_date_str").agg(Attendees=("attended", "count"), Converted=("converted", "sum")).reset_index()
+    with c1:
+        fig = go.Figure()
+        fig.add_bar(x=bydate["seminar_date_str"], y=bydate["Attendees"], name="Attendees", marker_color="#6366f1", opacity=0.7)
+        fig.add_bar(x=bydate["seminar_date_str"], y=bydate["Converted"], name="Converted", marker_color="#10b981", opacity=0.9)
+        fig.update_layout(title="Attendees & Conversions by Seminar Date", barmode="group", template="plotly_dark",
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=50, b=30, l=20, r=20), height=320)
+        st.plotly_chart(fig, use_container_width=True)
+    byloc = fdf.groupby("place").agg(Attendees=("attended", "count"), Converted=("converted", "sum"), Revenue=("primary_paid", "sum")).reset_index().sort_values("Attendees", ascending=False).head(12)
+    with c2:
+        fig2 = go.Figure()
+        fig2.add_bar(x=byloc["place"], y=byloc["Attendees"], name="Attendees", marker_color="#6366f1", opacity=0.7)
+        fig2.add_bar(x=byloc["place"], y=byloc["Converted"], name="Converted", marker_color="#10b981", opacity=0.9)
+        fig2.update_layout(title="Attendees & Conversions by Location", barmode="group", template="plotly_dark",
+                           paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=50, b=30, l=20, r=20), height=320)
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown('<div class="section-header">🎟️ Seminar Seat Booked Analysis</div>', unsafe_allow_html=True)
+    sb1, sb2 = st.columns(2)
+    seat_loc = fdf.groupby("place").agg(
+        SeatBookedStudents=("seat_book_amount", lambda s: (pd.to_numeric(s, errors="coerce").fillna(0) > 0).sum()),
+        SeatBookedAmount=("seat_book_amount", "sum"),
+    ).reset_index().sort_values("SeatBookedAmount", ascending=False).head(12)
+    with sb1:
+        fig_sb1 = px.bar(seat_loc.sort_values("SeatBookedStudents", ascending=True), x="SeatBookedStudents", y="place", orientation="h",
+                         title="Seminar Seat Booked Count by Location")
+        fig_sb1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=320, yaxis_title="")
+        st.plotly_chart(fig_sb1, use_container_width=True)
+    with sb2:
+        fig_sb2 = px.bar(seat_loc.sort_values("SeatBookedAmount", ascending=True), x="SeatBookedAmount", y="place", orientation="h",
+                         title="Seminar Seat Booked Amount by Location")
+        fig_sb2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=320, yaxis_title="")
+        st.plotly_chart(fig_sb2, use_container_width=True)
+
+def render_courses(fdf):
+    conv = fdf[fdf["converted"]].copy()
+    if conv.empty:
+        st.info("No converted students in current filter.")
+        return
+    byc = conv.groupby("primary_course").agg(Students=("attended", "count"), Paid=("primary_paid", "sum"), Due=("primary_due", "sum")).reset_index().sort_values("Students", ascending=False)
+    total = byc["Students"].sum()
+    byc["Share %"] = (byc["Students"] / total * 100).round(1)
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = px.bar(byc.head(12), x="Students", y="primary_course", orientation="h", title="Course-wise Student Count")
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=380, yaxis_title="")
+        st.plotly_chart(fig, use_container_width=True)
+    with c2:
+        fig2 = px.pie(byc.head(10), names="primary_course", values="Students", title="Course Share by Student Count", hole=0.35, color_discrete_sequence=CHART_COLORS)
+        fig2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=380)
+        st.plotly_chart(fig2, use_container_width=True)
+
+def render_combo(fdf, orders_df):
+    pti_df = fdf[fdf["primary_course"].astype(str).str.contains(PTI_MATCH, na=False, case=False)]
+    with_other = pti_df[pti_df["additional_courses"].apply(lambda x: len(x) if isinstance(x, list) else 0) > 0]
+    cols = st.columns(4)
+    stats = [
+        ("PTI Buyers", len(pti_df), "#6366f1"),
+        ("Also Bought More", len(with_other), "#10b981"),
+        ("Cross-Sell Rate", f"{len(with_other)/len(pti_df)*100:.1f}%" if len(pti_df) else "0%", "#06b6d4"),
+        ("Additional Revenue", fmt_inr(with_other["additional_paid"].sum()), "#f59e0b"),
+    ]
+    for i, (lbl, val, clr) in enumerate(stats):
+        cols[i].markdown(kpi_card(lbl, val, accent=clr), unsafe_allow_html=True)
+    if with_other.empty:
+        st.info("No PTI buyers with later purchases in the current filter.")
+
+def render_leads(fdf):
+    show = fdf[["name", "mobile", "place", "seminar_date_str", "converted", "primary_course", "primary_paid",
+                "webinar_type", "lead_source", "lead_status", "stage_name", "lead_owner", "state",
+                "attempted", "email", "remarks"]].copy()
+    show["converted"] = show["converted"].map({True: "✅ Yes", False: "❌ No"})
+    show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
+    show.columns = ["Name", "Mobile", "Location", "Seminar Date", "Converted", "Course", "Paid", "Lead Type", "Source", "Lead Status", "Stage", "Owner", "State", "Attempted", "Email", "Remarks"]
+    st.dataframe(show, use_container_width=True, hide_index=True, height=420)
+
+def render_journey(fdf):
+    show = fdf[["name", "mobile", "seminar_date_str", "place", "session", "trainer", "attended",
+                "seat_book_amount", "primary_course", "primary_order_date_str", "primary_paid", "primary_due",
+                "additional_courses", "webinar_type", "lead_source", "lead_status", "stage_name", "lead_owner"]].copy()
+    show["attended"] = show["attended"].map({True: "✅", False: "—"})
+    show["seat_book_amount"] = show["seat_book_amount"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
+    show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
+    show["primary_due"] = show["primary_due"].apply(lambda x: fmt_inr(x) if x > 0 else "₹0")
+    show["additional_courses"] = show["additional_courses"].apply(lambda x: " | ".join(x) if isinstance(x, list) and x else "—")
+    show.columns = ["Name", "Mobile", "Seminar Date", "Location", "Session", "Trainer", "Attended", "Seat Book Amt", "Primary Course", "Order Date", "Paid", "Due", "Additional Courses", "Lead Type", "Source", "Lead Status", "Stage", "Owner"]
+    st.dataframe(show, use_container_width=True, hide_index=True, height=500)
+
+def render_tables(fdf, orders_df):
+    tab1, tab2, tab3 = st.tabs(["📋 Attendee Master", "✅ Converted Students", "📦 All Orders Summary"])
+    with tab1:
+        show = fdf[["name", "mobile", "place", "seminar_date_str", "session", "trainer", "seat_book_amount", "converted", "primary_course", "primary_paid", "primary_due", "primary_status"]].copy()
+        show["seat_book_amount"] = show["seat_book_amount"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
+        show["converted"] = show["converted"].map({True: "✅ Yes", False: "❌ No"})
+        show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
+        show["primary_due"] = show["primary_due"].apply(lambda x: fmt_inr(x) if x > 0 else "₹0")
+        show.columns = ["Name", "Mobile", "Location", "Seminar Date", "Session", "Trainer", "Seat Book Amt", "Converted", "Course", "Paid", "Due", "Status"]
+        st.dataframe(show, use_container_width=True, hide_index=True, height=400)
+    with tab2:
+        conv = fdf[fdf["converted"]].copy()
+        show2 = conv[["name", "mobile", "place", "seminar_date_str", "primary_course", "primary_order_date_str", "primary_paid", "primary_due", "additional_courses", "webinar_type", "lead_source", "primary_status"]].copy()
+        show2["primary_paid"] = show2["primary_paid"].apply(fmt_inr)
+        show2["primary_due"] = show2["primary_due"].apply(lambda x: fmt_inr(x) if x > 0 else "₹0")
+        show2["additional_courses"] = show2["additional_courses"].apply(lambda x: " | ".join(x) if isinstance(x, list) and x else "—")
+        show2.columns = ["Name", "Mobile", "Location", "Seminar Date", "Course", "Order Date", "Paid", "Due", "Additional Courses", "Lead Type", "Source", "Status"]
+        st.dataframe(show2, use_container_width=True, hide_index=True, height=400)
+    with tab3:
+        if orders_df is None or orders_df.empty:
+            st.info("No order records available.")
+        else:
+            summary = orders_df.groupby("place").agg(Students=("mobile", "nunique"), Orders=("course", "count"), Total_Paid=("paid_amount", "sum"), Total_Due=("total_due", "sum")).reset_index()
+            summary["Total_Paid"] = summary["Total_Paid"].apply(fmt_inr)
+            summary["Total_Due"] = summary["Total_Due"].apply(fmt_inr)
+            summary.columns = ["Location", "Students", "Orders", "Total Paid", "Total Due"]
+            st.dataframe(summary, use_container_width=True, hide_index=True)
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
