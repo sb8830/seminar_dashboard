@@ -99,9 +99,9 @@ def fmt_inr(n):
     except Exception:
         return "₹0"
 
-""" def load_excel_or_csv(file): """
-    """Load xlsx/xls/csv from an UploadedFile object."""
 def load_excel_or_csv(file_obj, filename=None):
+    """Load xlsx/xls/csv from an UploadedFile object."""
+
     """
     Supports both CSV and Excel files from BytesIO or UploadedFile.
     Automatically detects type using filename or content fallback.
