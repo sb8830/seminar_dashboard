@@ -125,7 +125,7 @@ def load_excel_or_csv(file_obj, filename=None):
                 file_obj.seek(0)
                 return pd.read_csv(file_obj)
 
-         except Exception as e:
+    except Exception as e:
         file_obj.seek(0)
         raise ValueError(f"Error reading file ({filename}): {e}")
 
