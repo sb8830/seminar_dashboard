@@ -322,10 +322,11 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     c_semdate  = detect_col(sem, ["Seminar Date", "Date", "seminar_date", "Event Date"])
     c_session  = detect_col(sem, ["Session", "session", "Batch", "Time"])
     c_attended = detect_col(sem, ["Is Attended ?", "Attended", "is_attended", "attended"])
+    c_altmob = detect_col(sem, ["Alternate Number", "Alt Mobile", "alternate_number", "Alternate Mobile", "Alternative Mobile"])
     c_amount   = detect_col(sem, ["Amount Paid", "amount paid", "Seat Book Amount", "Seat Amount", "Seminar Amount", "Amount"])
 
     sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None
-    c_altmob = detect_col(sem,["Alternate Number", "Alt Mobile", "alternate_number", "Alternate Mobile", "Alternative Mobile"])
+    sem["alt_mobile_clean"] = sem[c_altmob].apply(clean_mobile) if c_altmob else None
     sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT
     sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0
     sem["attended_flag"] = (
@@ -333,9 +334,16 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         if c_attended else False
     )
 
-    # ensure column exists if "alt_mobile_clean" not in sem.columns:     sem["alt_mobile_clean"] = None  attendees = sem[     (         (sem["attended_flag"]) |          (sem["seat_book_amount"] > 0)     ) & (         (sem["mobile_clean"].notna()) |          (sem["alt_mobile_clean"].notna())     ) ].copy().reset_index(drop=True)
+    attendees = sem[
+        (
+            sem["attended_flag"] |
+            (sem["seat_book_amount"] > 0)
+        ) & (
+            sem["mobile_clean"].notna() |
+            sem["alt_mobile_clean"].notna()
+        )
+    ].copy().reset_index(drop=True)
 
-    # ── CONVERSION ───────────────────────────
     conv = load_excel_or_csv(io.BytesIO(conv_bytes), conv_name)
     conv.columns = [str(c).strip() for c in conv.columns]
 
@@ -436,7 +444,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     rows = []
     order_rows = []
 
-    sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None sem["alt_mobile_clean"] = sem[c_altmob].apply(clean_mobile) if c_altmob else None if "alt_mobile_clean" not in sem.columns:     sem["alt_mobile_clean"] = None  sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0 sem["attended_flag"] = (     sem[c_attended].astype(str).str.strip().str.upper().isin(["YES", "TRUE", "1", "Y"])     if c_attended else False )  attendees = sem[     (         sem["attended_flag"] |         (sem["seat_book_amount"] > 0)     ) & (         sem["mobile_clean"].notna() |         sem["alt_mobile_clean"].notna()     ) ].copy().reset_index(drop=True)
+    for _, row in attendees.iterrows():
         mob = row["mobile_clean"]
         alt_mob = row.get("alt_mobile_clean", None)
         match_mobile = mob or alt_mob
@@ -468,10 +476,9 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
 
         valid = pd.DataFrame()
         all_mobile_orders = pd.DataFrame()
-        if match_mobile:
-            possible_mobiles = [m for m in [mob, alt_mob] if m]
+        if possible_mobiles:
             all_mobile_orders = conv[conv["mobile_clean"].isin(possible_mobiles)].sort_values("order_date_clean")
-        if match_mobile and pd.notna(sem_dt):
+        if possible_mobiles and pd.notna(sem_dt):
             valid = all_mobile_orders[all_mobile_orders["order_date_clean"] >= sem_dt].sort_values("order_date_clean")
 
         # Status should still come from conversion list even when the student is only seat-booked
@@ -526,7 +533,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
                     "order_id": str(o["order_id_clean"]).strip(),
                 })
 
-        entry.update(get_lead(match_mobile) if match_mobile else {})
+        entry.update(get_lead(possible_mobiles[0]) if possible_mobiles else {})
         rows.append(entry)
 
     df = pd.DataFrame(rows)
