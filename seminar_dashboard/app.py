@@ -445,9 +445,9 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     order_rows = []
 
     for _, row in attendees.iterrows():
-        mob = row["mobile_clean"]
-        alt_mob = row.get("alt_mobile_clean", None)
-        match_mobile = mob or alt_mob
+        mob = row.get("mobile_clean")
+        alt_mob = row.get("alt_mobile_clean")
+        possible_mobiles = [m for m in [mob, alt_mob] if m]
         sem_dt = row["seminar_date"]
 
         entry = {
@@ -533,7 +533,12 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
                     "order_id": str(o["order_id_clean"]).strip(),
                 })
 
-        entry.update(get_lead(possible_mobiles[0]) if possible_mobiles else {})
+        lead_info = {}
+        for _mob in possible_mobiles:
+            lead_info = get_lead(_mob)
+            if any(str(v).strip() for v in lead_info.values()):
+                break
+        entry.update(lead_info)
         rows.append(entry)
 
     df = pd.DataFrame(rows)
