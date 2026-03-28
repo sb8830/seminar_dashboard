@@ -196,7 +196,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes,
     conv["payment_received"]  = safe_numeric(conv[cc_payrec])  if cc_payrec  else 0
     conv["total_gst"]         = safe_numeric(conv[cc_gst])     if cc_gst     else 0
     conv["total_due"]         = safe_numeric(conv[cc_due])     if cc_due     else 0
-    conv["paid_amount"]       = conv["payment_received"] + conv["total_gst"]
+    conv["paid_amount"]       = conv["payment_received"]
     conv["service_name_clean"]= conv[cc_service].astype(str).str.strip() if cc_service else ""
 
     # ── LEADS ────────────────────────────────
