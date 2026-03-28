@@ -236,6 +236,75 @@ def detect_col(df, candidates, required=False):
     return None
 
 
+
+
+def render_section_student_details(title, df, extra_cols=None, key_prefix="sec"):
+    st.markdown(f'<div class="section-header">👥 {title} — Student Details</div>', unsafe_allow_html=True)
+    if df is None or df.empty:
+        st.info("No student records available for the current filters.")
+        return
+
+    base_cols = [
+        "name", "mobile", "place", "seminar_date_str", "session", "trainer",
+        "seat_book_amount", "converted", "primary_course", "primary_order_date_str",
+        "primary_paid", "primary_due", "webinar_type", "lead_source", "lead_status",
+        "stage_name", "lead_owner"
+    ]
+    cols = [c for c in base_cols if c in df.columns]
+    if extra_cols:
+        for c in extra_cols:
+            if c in df.columns and c not in cols:
+                cols.append(c)
+
+    show = df[cols].copy()
+    if "converted" in show.columns:
+        show["converted"] = show["converted"].map({True: "✅ Yes", False: "❌ No"})
+    if "seat_book_amount" in show.columns:
+        show["seat_book_amount"] = show["seat_book_amount"].apply(lambda x: fmt_inr(x) if pd.notna(x) and float(x) > 0 else "—")
+    if "primary_paid" in show.columns:
+        show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if pd.notna(x) and float(x) > 0 else "—")
+    if "primary_due" in show.columns:
+        show["primary_due"] = show["primary_due"].apply(lambda x: fmt_inr(x) if pd.notna(x) and float(x) > 0 else "₹0")
+    if "additional_courses" in show.columns:
+        show["additional_courses"] = show["additional_courses"].apply(lambda x: " | ".join(x) if isinstance(x, list) and x else "—")
+
+    rename_map = {
+        "name": "Name",
+        "mobile": "Mobile",
+        "place": "Location",
+        "seminar_date_str": "Seminar Date",
+        "session": "Session",
+        "trainer": "Trainer",
+        "seat_book_amount": "Seat Book Amt",
+        "converted": "Converted",
+        "primary_course": "Primary Course",
+        "primary_order_date_str": "Order Date",
+        "primary_paid": "Paid",
+        "primary_due": "Due",
+        "webinar_type": "Lead Type",
+        "lead_source": "Lead Source",
+        "lead_status": "Lead Status",
+        "stage_name": "Stage",
+        "lead_owner": "Owner",
+        "additional_courses": "Additional Courses",
+    }
+    show = show.rename(columns=rename_map)
+
+    search = st.text_input(f"Search in {title} student details", key=f"{key_prefix}_search")
+    if search:
+        mask = show.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)
+        show = show[mask]
+
+    st.caption(f"{len(show)} students")
+    st.dataframe(show, use_container_width=True, hide_index=True, height=380)
+    st.download_button(
+        f"⬇️ Download {title} Students CSV",
+        show.to_csv(index=False).encode(),
+        f"{key_prefix}_students.csv",
+        "text/csv",
+        key=f"{key_prefix}_dl"
+    )
+
 # ─────────────────────────────────────────────
 # DATA PROCESSING
 # ─────────────────────────────────────────────
@@ -1278,18 +1347,30 @@ def main():
         render_kpis(fdf)
         st.markdown("---")
         render_overview(fdf)
+        st.markdown("---")
+        render_section_student_details("Overview", fdf, key_prefix="overview")
 
     with tabs[1]:
         render_courses(fdf)
+        st.markdown("---")
+        render_section_student_details("Course Analysis", fdf[fdf["converted"]], extra_cols=["additional_courses"], key_prefix="course")
 
     with tabs[2]:
         render_combo(fdf, filtered_orders)
+        st.markdown("---")
+        combo_df = fdf[fdf["primary_course"].astype(str).str.contains("Power Of Trading", na=False, case=False)].copy()
+        render_section_student_details("Combo Cross-Sell", combo_df, extra_cols=["additional_courses", "additional_paid"], key_prefix="combo")
 
     with tabs[3]:
         render_leads(fdf)
+        st.markdown("---")
+        lead_df = fdf[(fdf["lead_source"].astype(str).str.strip() != "") | (fdf["webinar_type"].astype(str).str.strip() != "")].copy()
+        render_section_student_details("Lead Intelligence", lead_df, extra_cols=["email", "remarks"], key_prefix="lead")
 
     with tabs[4]:
         render_journey(fdf)
+        st.markdown("---")
+        render_section_student_details("Student Journey", fdf, extra_cols=["additional_courses"], key_prefix="journeysec")
 
     with tabs[5]:
         render_tables(fdf, filtered_orders)
