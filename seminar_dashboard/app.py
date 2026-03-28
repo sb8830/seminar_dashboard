@@ -464,11 +464,24 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         }
 
         valid = pd.DataFrame()
+        all_mobile_orders = pd.DataFrame()
+        if mob:
+            all_mobile_orders = conv[conv["mobile_clean"] == mob].sort_values("order_date_clean")
         if mob and pd.notna(sem_dt):
-            valid = conv[
-                (conv["mobile_clean"] == mob) &
-                (conv["order_date_clean"] >= sem_dt)
-            ].sort_values("order_date_clean")
+            valid = all_mobile_orders[all_mobile_orders["order_date_clean"] >= sem_dt].sort_values("order_date_clean")
+
+        # Status should still come from conversion list even when the student is only seat-booked
+        # and does not qualify as a valid post-seminar conversion.
+        status_source = valid if not valid.empty else all_mobile_orders
+        if not status_source.empty:
+            status_row = status_source.iloc[-1]
+            raw_status = str(status_row["status_clean"]).strip().lower()
+            if raw_status in ["active", "success", "completed", "paid"]:
+                entry["primary_status"] = "Active"
+            elif raw_status in ["inactive", "cancelled", "canceled", "failed", "refund", "refunded"]:
+                entry["primary_status"] = "Inactive"
+            else:
+                entry["primary_status"] = raw_status.title() if raw_status else ""
 
         if not valid.empty:
             entry["converted"] = True
@@ -481,13 +494,6 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             entry["primary_due"] = float(primary["total_due"])
             entry["primary_gst"] = float(primary["total_gst"])
             entry["primary_mode"] = str(primary["payment_mode_clean"]).strip()
-            raw_status = str(primary["status_clean"]).strip().lower()
-            if raw_status in ["active", "success", "completed", "paid"]:
-                entry["primary_status"] = "Active"
-            elif raw_status in ["inactive", "cancelled", "canceled", "failed", "refund", "refunded"]:
-                entry["primary_status"] = "Inactive"
-            else:
-                entry["primary_status"] = raw_status.title() if raw_status else ""
             entry["trainer_conv"] = str(primary["trainer_clean"]).strip()
             entry["sales_rep"] = str(primary["sales_rep_clean"]).strip()
 
