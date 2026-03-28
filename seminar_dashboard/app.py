@@ -99,9 +99,9 @@ def fmt_inr(n):
     except Exception:
         return "₹0"
 
-def load_excel_or_csv(file):
+""" def load_excel_or_csv(file): """
     """Load xlsx/xls/csv from an UploadedFile object."""
-   def load_excel_or_csv(file_obj, filename=None):
+def load_excel_or_csv(file_obj, filename=None):
     """
     Supports both CSV and Excel files from BytesIO or UploadedFile.
     Automatically detects type using filename or content fallback.
@@ -125,7 +125,7 @@ def load_excel_or_csv(file):
                 file_obj.seek(0)
                 return pd.read_csv(file_obj)
 
-    except Exception as e:
+         except Exception as e:
         file_obj.seek(0)
         raise ValueError(f"Error reading file ({filename}): {e}")
 
