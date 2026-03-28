@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Invesmate Seminar Analytics",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ─────────────────────────────────────────────
@@ -21,50 +21,121 @@ st.set_page_config(
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+#MainMenu, footer, header {visibility: hidden;}
+.stApp {
+    background:
+      radial-gradient(circle at top right, rgba(99,102,241,.14), transparent 28%),
+      radial-gradient(circle at top left, rgba(6,182,212,.10), transparent 24%),
+      linear-gradient(180deg, #08101d 0%, #0b1220 100%);
+}
+.block-container {padding-top: 1.1rem; padding-bottom: 2rem; max-width: 1500px;}
 
+/* panels */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0d1527 0%, #0b1220 100%);
+    border-right: 1px solid rgba(99,102,241,.12);
+}
+div[data-testid="stExpander"] {
+    border: 1px solid rgba(148,163,184,.12) !important;
+    border-radius: 16px !important;
+    background: rgba(15,23,42,.55) !important;
+}
+
+/* top cards */
 .kpi-card {
-    background: #131929;
-    border: 1px solid #1e2d4a;
-    border-radius: 14px;
-    padding: 18px 20px;
-    text-align: center;
+    background: linear-gradient(180deg, rgba(19,25,41,.96), rgba(12,18,32,.96));
+    border: 1px solid rgba(99,102,241,.14);
+    border-radius: 18px;
+    padding: 18px 18px;
+    text-align: left;
     border-top: 3px solid var(--accent, #6366f1);
+    box-shadow: 0 14px 32px rgba(2,6,23,.25);
 }
 .kpi-label {
     font-size: 11px;
-    color: #64748b;
+    color: #7f8aa3;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
+    letter-spacing: 0.08em;
+    font-weight: 700;
 }
 .kpi-value {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 800;
-    color: #e2e8f0;
-    margin: 4px 0;
-    letter-spacing: -1px;
+    color: #edf2ff;
+    margin: 6px 0 3px;
+    letter-spacing: -0.03em;
 }
 .kpi-sub {
     font-size: 11px;
-    color: #64748b;
+    color: #94a3b8;
 }
 
+/* headers */
 .section-header {
-    font-size: 15px;
-    font-weight: 700;
-    color: #e2e8f0;
-    border-left: 3px solid #6366f1;
-    padding-left: 10px;
-    margin: 4px 0 16px 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #eef2ff;
+    border-left: 4px solid #6366f1;
+    padding-left: 12px;
+    margin: 6px 0 16px 0;
 }
 
-.badge-green { background:#10b98120; color:#10b981; border-radius:5px; padding:2px 8px; font-size:11px; font-weight:600; }
-.badge-red   { background:#ef444420; color:#ef4444; border-radius:5px; padding:2px 8px; font-size:11px; font-weight:600; }
-.badge-blue  { background:#6366f120; color:#6366f1; border-radius:5px; padding:2px 8px; font-size:11px; font-weight:600; }
-.badge-cyan  { background:#06b6d420; color:#06b6d4; border-radius:5px; padding:2px 8px; font-size:11px; font-weight:600; }
+/* widgets */
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div,
+[data-testid="stDateInputField"] {
+    background: rgba(15,23,42,.88) !important;
+    border: 1px solid rgba(148,163,184,.14) !important;
+    border-radius: 12px !important;
+}
+label[data-testid="stWidgetLabel"] {
+    color: #94a3b8 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+}
+.stMultiSelect [data-baseweb="tag"] {
+    background: rgba(99,102,241,.16) !important;
+    border: 1px solid rgba(99,102,241,.25) !important;
+    border-radius: 999px !important;
+}
+button[data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, #6366f1, #7c3aed) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    color: white !important;
+    font-weight: 700 !important;
+}
+button[data-testid="stBaseButton-secondary"] {
+    background: rgba(15,23,42,.88) !important;
+    border: 1px solid rgba(148,163,184,.14) !important;
+    border-radius: 12px !important;
+    color: #cbd5e1 !important;
+}
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+    border-bottom: 1px solid rgba(148,163,184,.12);
+}
+.stTabs [data-baseweb="tab"] {
+    background: rgba(15,23,42,.55);
+    border-radius: 12px 12px 0 0;
+    color: #94a3b8;
+    font-weight: 700;
+    padding: .7rem 1rem;
+}
+.stTabs [aria-selected="true"] {
+    color: #eef2ff !important;
+    background: rgba(99,102,241,.15) !important;
+    border-bottom: 2px solid #6366f1 !important;
+}
+
+/* tables */
+[data-testid="stDataFrame"] {
+    border: 1px solid rgba(148,163,184,.10);
+    border-radius: 16px;
+    overflow: hidden;
+}
 
 .login-box { max-width: 400px; margin: 80px auto; background: #131929; border: 1px solid #1e2d4a; border-radius: 20px; padding: 48px 40px; }
 .login-logo { text-align: center; margin-bottom: 32px; }
@@ -181,9 +252,11 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     c_semdate  = detect_col(sem, ["Seminar Date", "Date", "seminar_date", "Event Date"])
     c_session  = detect_col(sem, ["Session", "session", "Batch", "Time"])
     c_attended = detect_col(sem, ["Is Attended ?", "Attended", "is_attended", "attended"])
+    c_amount   = detect_col(sem, ["Amount Paid", "amount paid", "Seat Book Amount", "Seat Amount", "Seminar Amount", "Amount"])
 
     sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None
     sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT
+    sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0
     sem["attended_flag"] = (
         sem[c_attended].astype(str).str.strip().str.upper().isin(["YES", "TRUE", "1", "Y"])
         if c_attended else False
@@ -304,6 +377,8 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             "seminar_date": sem_dt,
             "session": str(row.get(c_session, "")).strip().upper() if c_session else "",
             "attended": True,
+            "seat_book_amount": float(row.get("seat_book_amount", 0) or 0),
+            "seat_booked": bool(float(row.get("seat_book_amount", 0) or 0) > 0),
             "primary_course": "",
             "primary_order_date": pd.NaT,
             "primary_paid": 0.0,
@@ -631,6 +706,14 @@ def render_kpis(fdf):
     for i, (lbl, val, sub, clr) in enumerate(cards):
         cols[i].markdown(kpi_card(lbl, val, sub, clr), unsafe_allow_html=True)
 
+    seat_book_count = len(fdf[fdf["seat_book_amount"] > 0]) if "seat_book_amount" in fdf.columns else 0
+    seat_book_amount = fdf["seat_book_amount"].sum() if "seat_book_amount" in fdf.columns else 0
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    seat_cols = st.columns(2)
+    seat_cols[0].markdown(kpi_card("Seminar Seat Booked Count", seat_book_count, "From seminar updated file", "#22c55e"), unsafe_allow_html=True)
+    seat_cols[1].markdown(kpi_card("Seminar Seat Booked Amount", fmt_inr(seat_book_amount), "Seat amount collected", "#14b8a6"), unsafe_allow_html=True)
+
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
     cols2 = st.columns(5)
     cards2 = [
@@ -721,6 +804,57 @@ def render_overview(fdf):
         fig5 = px.bar(rev_loc, x="primary_paid", y="place", orientation="h", title="Revenue by Location (₹)", color_discrete_sequence=CHART_COLORS)
         fig5.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, margin=dict(t=50, b=10, l=10, r=10), height=280)
         st.plotly_chart(fig5, use_container_width=True)
+
+    if "seat_book_amount" in fdf.columns:
+        st.markdown('<div class="section-header">🎟️ Seminar Seat Booked Analysis</div>', unsafe_allow_html=True)
+        sb1, sb2 = st.columns(2)
+
+        seat_loc = fdf.groupby("place").agg(
+            SeatBookedStudents=("seat_book_amount", lambda s: (pd.to_numeric(s, errors="coerce").fillna(0) > 0).sum()),
+            SeatBookedAmount=("seat_book_amount", "sum"),
+        ).reset_index().sort_values("SeatBookedAmount", ascending=False).head(12)
+
+        with sb1:
+            fig_sb1 = px.bar(
+                seat_loc.sort_values("SeatBookedStudents", ascending=True),
+                x="SeatBookedStudents",
+                y="place",
+                orientation="h",
+                title="Seminar Seat Booked Count by Location",
+                color="SeatBookedStudents",
+                color_continuous_scale=["#13203a", "#6366f1"],
+            )
+            fig_sb1.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                showlegend=False,
+                margin=dict(t=50, b=10, l=10, r=10),
+                height=320,
+                yaxis_title="",
+            )
+            st.plotly_chart(fig_sb1, use_container_width=True)
+
+        with sb2:
+            fig_sb2 = px.bar(
+                seat_loc.sort_values("SeatBookedAmount", ascending=True),
+                x="SeatBookedAmount",
+                y="place",
+                orientation="h",
+                title="Seminar Seat Booked Amount by Location",
+                color="SeatBookedAmount",
+                color_continuous_scale=["#13203a", "#10b981"],
+            )
+            fig_sb2.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                showlegend=False,
+                margin=dict(t=50, b=10, l=10, r=10),
+                height=320,
+                yaxis_title="",
+            )
+            st.plotly_chart(fig_sb2, use_container_width=True)
 
     st.markdown('<div class="section-header">👨‍🏫 Trainer Performance</div>', unsafe_allow_html=True)
     trainer_df = fdf.groupby("trainer").agg(
@@ -945,14 +1079,15 @@ def render_journey(fdf):
     search = st.text_input("🔍 Search students…", key="journey_search")
     show = fdf[[
         "name", "mobile", "seminar_date_str", "place", "session", "trainer", "attended",
-        "primary_course", "primary_order_date_str", "primary_paid", "primary_due",
+        "seat_book_amount", "primary_course", "primary_order_date_str", "primary_paid", "primary_due",
         "additional_courses", "webinar_type", "lead_source", "lead_status", "stage_name", "lead_owner"
     ]].copy()
     show["attended"] = show["attended"].map({True: "✅"})
+    show["seat_book_amount"] = show["seat_book_amount"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
     show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
     show["primary_due"] = show["primary_due"].apply(lambda x: fmt_inr(x) if x > 0 else "₹0")
     show["additional_courses"] = show["additional_courses"].apply(lambda x: " | ".join(x) if isinstance(x, list) and x else "—")
-    show.columns = ["Name", "Mobile", "Seminar Date", "Location", "Session", "Trainer", "Attended", "Primary Course", "Order Date", "Paid", "Due", "Additional Courses", "Lead Type", "Source", "Lead Status", "Stage", "Owner"]
+    show.columns = ["Name", "Mobile", "Seminar Date", "Location", "Session", "Trainer", "Attended", "Seat Book Amt", "Primary Course", "Order Date", "Paid", "Due", "Additional Courses", "Lead Type", "Source", "Lead Status", "Stage", "Owner"]
     if search:
         mask = show.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)
         show = show[mask]
@@ -968,11 +1103,12 @@ def render_tables(fdf, orders_df):
 
     with tab1:
         search = st.text_input("🔍 Search attendees…", key="att_search")
-        show = fdf[["name", "mobile", "place", "seminar_date_str", "session", "trainer", "converted", "primary_course", "primary_paid", "primary_due"]].copy()
+        show = fdf[["name", "mobile", "place", "seminar_date_str", "session", "trainer", "seat_book_amount", "converted", "primary_course", "primary_paid", "primary_due"]].copy()
+        show["seat_book_amount"] = show["seat_book_amount"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
         show["converted"] = show["converted"].map({True: "✅ Yes", False: "❌ No"})
         show["primary_paid"] = show["primary_paid"].apply(lambda x: fmt_inr(x) if x > 0 else "—")
         show["primary_due"] = show["primary_due"].apply(lambda x: fmt_inr(x) if x > 0 else "₹0")
-        show.columns = ["Name", "Mobile", "Location", "Seminar Date", "Session", "Trainer", "Converted", "Course", "Paid", "Due"]
+        show.columns = ["Name", "Mobile", "Location", "Seminar Date", "Session", "Trainer", "Seat Book Amt", "Converted", "Course", "Paid", "Due"]
         if search:
             mask = show.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)
             show = show[mask]
