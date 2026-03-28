@@ -247,7 +247,7 @@ def render_section_student_details(title, df, extra_cols=None, key_prefix="sec")
     base_cols = [
         "name", "mobile", "place", "seminar_date_str", "session", "trainer",
         "seat_book_amount", "converted", "primary_course", "primary_order_date_str",
-        "primary_paid", "primary_due", "webinar_type", "lead_source", "lead_status",
+        "primary_paid", "primary_due", "primary_status", "webinar_type", "lead_source", "lead_status",
         "stage_name", "lead_owner"
     ]
     cols = [c for c in base_cols if c in df.columns]
@@ -281,6 +281,7 @@ def render_section_student_details(title, df, extra_cols=None, key_prefix="sec")
         "primary_order_date_str": "Order Date",
         "primary_paid": "Paid",
         "primary_due": "Due",
+        "primary_status": "Conversion Status",
         "webinar_type": "Lead Type",
         "lead_source": "Lead Source",
         "lead_status": "Lead Status",
@@ -480,7 +481,13 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             entry["primary_due"] = float(primary["total_due"])
             entry["primary_gst"] = float(primary["total_gst"])
             entry["primary_mode"] = str(primary["payment_mode_clean"]).strip()
-            entry["primary_status"] = str(primary["status_clean"]).strip()
+            raw_status = str(primary["status_clean"]).strip().lower()
+            if raw_status in ["active", "success", "completed", "paid"]:
+                entry["primary_status"] = "Active"
+            elif raw_status in ["inactive", "cancelled", "canceled", "failed", "refund", "refunded"]:
+                entry["primary_status"] = "Inactive"
+            else:
+                entry["primary_status"] = raw_status.title() if raw_status else ""
             entry["trainer_conv"] = str(primary["trainer_clean"]).strip()
             entry["sales_rep"] = str(primary["sales_rep_clean"]).strip()
 
@@ -771,8 +778,10 @@ def render_filters_top(df):
     sel_attempt = col15.multiselect("Attempted", sorted(df["attempted"].dropna().astype(str).unique()))
     sel_seat = col16.selectbox("Seat Booked", ["All", "Seat Booked", "No Seat Booked"])
 
-    col17, col18 = st.columns(2)
-    reset = col17.button("Reset Filters", use_container_width=True)
+    col17, col18, col19 = st.columns(3)
+    sel_status = col17.selectbox("Status", ["All", "Active", "Inactive"])
+    sel_primary_status = col18.selectbox("Primary Status", ["All", "Seat Booked", "Partially Converted", "Converted"])
+    reset = col19.button("Reset Filters", use_container_width=True)
 
     if reset:
         st.rerun()
@@ -815,6 +824,17 @@ def render_filters_top(df):
         fdf = fdf[fdf["seat_book_amount"] > 0]
     elif sel_seat == "No Seat Booked":
         fdf = fdf[fdf["seat_book_amount"] <= 0]
+    if sel_status == "Active":
+        fdf = fdf[fdf["primary_status"] == "Active"]
+    elif sel_status == "Inactive":
+        fdf = fdf[fdf["primary_status"] == "Inactive"]
+
+    if sel_primary_status == "Seat Booked":
+        fdf = fdf[(fdf["seat_book_amount"] > 0) & (~fdf["converted"])]
+    elif sel_primary_status == "Partially Converted":
+        fdf = fdf[(fdf["seat_book_amount"] > 0) & (fdf["converted"]) & (fdf["primary_due"] > 0)]
+    elif sel_primary_status == "Converted":
+        fdf = fdf[fdf["converted"]]
     return fdf
 
 # ─────────────────────────────────────────────
