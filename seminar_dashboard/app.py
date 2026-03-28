@@ -1365,7 +1365,7 @@ def main():
         render_leads(fdf)
         st.markdown("---")
         lead_df = fdf[(fdf["lead_source"].astype(str).str.strip() != "") | (fdf["webinar_type"].astype(str).str.strip() != "")].copy()
-        render_section_student_details("Lead Intelligence", lead_df, extra_cols=["email", "remarks"], key_prefix="lead")
+        render_section_student_details("Lead Intelligence", lead_df, extra_cols=["email", "remarks"], key_prefix="leadsec")
 
     with tabs[4]:
         render_journey(fdf)
