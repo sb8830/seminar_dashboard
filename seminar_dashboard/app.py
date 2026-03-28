@@ -505,7 +505,7 @@ def render_kpis(fdf):
         ("Total Attendees",    total,           "Filtered seminar attendees",  "#6366f1"),
         ("Converted",          n_conv,          "Post-seminar conversions",    "#10b981"),
         ("Conversion Rate",    rate,            "Attend → Purchase rate",      "#06b6d4"),
-        ("Total Paid Amount",  fmt_inr(t_paid), "payment_received + GST",      "#f59e0b"),
+        ("Total Paid Amount",  fmt_inr(t_paid), "payment_received",      "#f59e0b"),
         ("Total Due",          fmt_inr(t_due),  "Outstanding dues",            "#ef4444"),
     ]
     for i, (lbl, val, sub, clr) in enumerate(cards):
