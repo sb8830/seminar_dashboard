@@ -332,7 +332,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         if c_attended else False
     )
 
-    attendees = sem[sem["attended_flag"]].copy().reset_index(drop=True)
+    attendees = sem[(sem["attended_flag"]) | (sem["seat_book_amount"] > 0)].copy().reset_index(drop=True)
 
     # ── CONVERSION ───────────────────────────
     conv = load_excel_or_csv(io.BytesIO(conv_bytes), conv_name)
@@ -446,7 +446,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             "trainer": str(row.get(c_trainer, "")).strip() if c_trainer else "",
             "seminar_date": sem_dt,
             "session": str(row.get(c_session, "")).strip().upper() if c_session else "",
-            "attended": True,
+            "attended": bool(row.get("attended_flag", False)),
             "seat_book_amount": float(row.get("seat_book_amount", 0) or 0),
             "seat_booked": bool(float(row.get("seat_book_amount", 0) or 0) > 0),
             "primary_course": "",
