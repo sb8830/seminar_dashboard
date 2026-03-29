@@ -316,45 +316,57 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     sem = load_excel_or_csv(io.BytesIO(sem_bytes), sem_name)
     sem.columns = [str(c).strip() for c in sem.columns]
 
-    c_mobile   = detect_col(sem, ["Mobile", "Phone", "mobile", "phone", "Contact"])
-    c_name     = detect_col(sem, ["NAME", "Name", "Student Name", "name"])
-    c_place    = detect_col(sem, ["Place", "Location", "Venue", "City", "place"])
-    c_trainer  = detect_col(sem, ["Trainer / Presenter", "Trainer", "Presenter", "trainer"])
-    c_semdate  = detect_col(sem, ["Seminar Date", "Date", "seminar_date", "Event Date"])
-    c_session  = detect_col(sem, ["Session", "session", "Batch", "Time"])
+    c_mobile = detect_col(sem, ["Mobile", "Phone", "mobile", "phone", "Contact"])
+    c_altmob = detect_col(sem, ["Alternate Number", "Alt Mobile", "alternate_number", "Alternate Mobile", "Alternative Mobile"])
+    c_name = detect_col(sem, ["NAME", "Name", "Student Name", "name"])
+    c_place = detect_col(sem, ["Place", "Location", "Venue", "City", "place"])
+    c_trainer = detect_col(sem, ["Trainer / Presenter", "Trainer", "Presenter", "trainer"])
+    c_semdate = detect_col(sem, ["Seminar Date", "Date", "seminar_date", "Event Date"])
+    c_session = detect_col(sem, ["Session", "session", "Batch", "Time"])
     c_attended = detect_col(sem, ["Is Attended ?", "Attended", "is_attended", "attended"])
-    c_amount   = detect_col(sem, ["Amount Paid", "amount paid", "Seat Book Amount", "Seat Amount", "Seminar Amount", "Amount"])
+    c_amount = detect_col(sem, ["Amount Paid"], required=True)
+
+    if c_amount is None:
+        st.error("Amount Paid column not found in Seminar file")
+        st.stop()
 
     sem["mobile_clean"] = sem[c_mobile].apply(clean_mobile) if c_mobile else None
+    sem["alt_mobile_clean"] = sem[c_altmob].apply(clean_mobile) if c_altmob else None
     sem["seminar_date"] = parse_date_series(sem[c_semdate]) if c_semdate else pd.NaT
-    sem["seat_book_amount"] = safe_numeric(sem[c_amount]) if c_amount else 0
+    sem["seat_book_amount"] = safe_numeric(sem[c_amount])
     sem["attended_flag"] = (
         sem[c_attended].astype(str).str.strip().str.upper().isin(["YES", "TRUE", "1", "Y"])
         if c_attended else False
     )
 
-    attendees = sem[(sem["attended_flag"]) | (sem["seat_book_amount"] > 0)].copy().reset_index(drop=True)
+    attendees = sem[
+        (
+            sem["attended_flag"] |
+            (sem["seat_book_amount"] > 0)
+        ) & (
+            sem["mobile_clean"].notna() |
+            sem["alt_mobile_clean"].notna()
+        )
+    ].copy().reset_index(drop=True)
 
     # ── CONVERSION ───────────────────────────
     conv = load_excel_or_csv(io.BytesIO(conv_bytes), conv_name)
     conv.columns = [str(c).strip() for c in conv.columns]
 
-    cc_mobile   = detect_col(conv, ["phone", "Phone", "mobile", "Mobile", "Contact"])
-    cc_service  = detect_col(conv, ["service_name", "Service Name", "Course", "course_name", "ServiceName"])
-    cc_orderdt  = detect_col(conv, ["order_date", "Order Date", "OrderDate", "Date"])
-    cc_payrec   = detect_col(conv, ["payment_received", "Payment Received", "PaymentReceived", "amount_paid"])
-    cc_gst      = detect_col(conv, ["total_gst", "GST", "gst", "TotalGST"])
-    cc_due      = detect_col(conv, ["total_due", "Due", "total_due_amount", "TotalDue"])
-    cc_trainer  = detect_col(conv, ["trainer", "Trainer"])
+    cc_mobile = detect_col(conv, ["phone", "Phone", "mobile", "Mobile", "Contact"])
+    cc_service = detect_col(conv, ["service_name", "Service Name", "Course", "course_name", "ServiceName"])
+    cc_orderdt = detect_col(conv, ["order_date", "Order Date", "OrderDate", "Date"])
+    cc_payrec = detect_col(conv, ["payment_received", "Payment Received", "PaymentReceived", "amount_paid"])
+    cc_gst = detect_col(conv, ["total_gst", "GST", "gst", "TotalGST"])
+    cc_due = detect_col(conv, ["total_due", "Due", "total_due_amount", "TotalDue"])
+    cc_trainer = detect_col(conv, ["trainer", "Trainer"])
     cc_salesrep = detect_col(conv, ["sales_rep_name", "Sales Rep", "SalesRep", "sales_rep"])
-    cc_mode     = detect_col(conv, ["payment_mode", "Payment Mode", "mode"])
-    cc_status   = detect_col(conv, ["status", "Status"])
-    cc_orderid  = detect_col(conv, ["orderID", "Order ID", "order_id", "OrderId"])
+    cc_mode = detect_col(conv, ["payment_mode", "Payment Mode", "mode"])
+    cc_status = detect_col(conv, ["status", "Status"])
+    cc_orderid = detect_col(conv, ["orderID", "Order ID", "order_id", "OrderId"])
 
     conv["mobile_clean"] = conv[cc_mobile].apply(clean_mobile) if cc_mobile else None
-    conv["order_date_clean"] = pd.to_datetime(
-        conv[cc_orderdt], errors="coerce", utc=True
-    ).dt.tz_localize(None) if cc_orderdt else pd.NaT
+    conv["order_date_clean"] = pd.to_datetime(conv[cc_orderdt], errors="coerce", utc=True).dt.tz_localize(None) if cc_orderdt else pd.NaT
     conv["payment_received"] = safe_numeric(conv[cc_payrec]) if cc_payrec else 0
     conv["total_gst"] = safe_numeric(conv[cc_gst]) if cc_gst else 0
     conv["total_due"] = safe_numeric(conv[cc_due]) if cc_due else 0
@@ -370,24 +382,24 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
     leads = load_excel_or_csv(io.BytesIO(leads_bytes), leads_name)
     leads.columns = [str(c).strip() for c in leads.columns]
 
-    lc_mobile   = detect_col(leads, ["phone", "Phone", "mobile", "Mobile"])
+    lc_mobile = detect_col(leads, ["phone", "Phone", "mobile", "Mobile"])
     lc_convfrom = detect_col(leads, ["converted_from", "ConvertedFrom", "lead_type", "LeadType"])
-    lc_source   = detect_col(leads, ["leadsource", "lead_source", "LeadSource", "Source"])
+    lc_source = detect_col(leads, ["leadsource", "lead_source", "LeadSource", "Source"])
     lc_campaign = detect_col(leads, ["campaign_name", "Campaign", "CampaignName"])
-    lc_status   = detect_col(leads, ["leadstatus", "lead_status", "LeadStatus", "Status"])
-    lc_stage    = detect_col(leads, ["stage_name", "StageName", "Stage"])
-    lc_owner    = detect_col(leads, ["leadownername", "LeadOwner", "lead_owner", "Owner"])
-    lc_state    = detect_col(leads, ["state", "State", "Province"])
+    lc_status = detect_col(leads, ["leadstatus", "lead_status", "LeadStatus", "Status"])
+    lc_stage = detect_col(leads, ["stage_name", "StageName", "Stage"])
+    lc_owner = detect_col(leads, ["leadownername", "LeadOwner", "lead_owner", "Owner"])
+    lc_state = detect_col(leads, ["state", "State", "Province"])
     lc_attempted = detect_col(leads, ["Attempted/Unattempted", "attempted", "Attempted"])
-    lc_service  = detect_col(leads, ["servicename", "ServiceName", "service_name"])
-    lc_email    = detect_col(leads, ["email", "Email"])
-    lc_remarks  = detect_col(leads, ["remarks", "Remarks", "Notes"])
-    lc_name     = detect_col(leads, ["name", "Name", "StudentName"])
+    lc_service = detect_col(leads, ["servicename", "ServiceName", "service_name"])
+    lc_email = detect_col(leads, ["email", "Email"])
+    lc_remarks = detect_col(leads, ["remarks", "Remarks", "Notes"])
+    lc_name = detect_col(leads, ["name", "Name", "StudentName"])
 
     leads["mobile_clean"] = leads[lc_mobile].apply(clean_mobile) if lc_mobile else None
     lead_map = leads.drop_duplicates("mobile_clean").set_index("mobile_clean") if lc_mobile else pd.DataFrame()
 
-    def get_lead(mob):
+    def get_lead(possible_mobiles):
         blank = {
             "webinar_type": "",
             "lead_source": "",
@@ -402,47 +414,62 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             "remarks": "",
             "lead_name": "",
         }
-        if not mob or lead_map.empty or mob not in lead_map.index:
+        if lead_map.empty:
             return blank
 
-        r = lead_map.loc[mob]
-        if isinstance(r, pd.DataFrame):
-            r = r.iloc[0]
+        for mob in possible_mobiles:
+            if mob and mob in lead_map.index:
+                r = lead_map.loc[mob]
+                if isinstance(r, pd.DataFrame):
+                    r = r.iloc[0]
 
-        def gs(col):
-            return str(r[col]).strip() if col and col in r.index and pd.notna(r[col]) else ""
+                def gs(col):
+                    return str(r[col]).strip() if col and col in r.index and pd.notna(r[col]) else ""
 
-        wt = gs(lc_convfrom)
-        if not wt:
-            src = gs(lc_source)
-            wt = "Webinar" if "WBN" in src.upper() else ("Non Webinar" if src else "")
+                wt = gs(lc_convfrom)
+                if not wt:
+                    src = gs(lc_source)
+                    wt = "Webinar" if "WBN" in src.upper() else ("Non Webinar" if src else "")
 
-        blank.update({
-            "webinar_type": wt,
-            "lead_source": gs(lc_source),
-            "campaign_name": gs(lc_campaign),
-            "lead_status": gs(lc_status),
-            "stage_name": gs(lc_stage),
-            "lead_owner": gs(lc_owner),
-            "state": gs(lc_state),
-            "attempted": gs(lc_attempted),
-            "service_name_lead": gs(lc_service),
-            "email": gs(lc_email),
-            "remarks": gs(lc_remarks),
-            "lead_name": gs(lc_name),
-        })
+                blank.update({
+                    "webinar_type": wt,
+                    "lead_source": gs(lc_source),
+                    "campaign_name": gs(lc_campaign),
+                    "lead_status": gs(lc_status),
+                    "stage_name": gs(lc_stage),
+                    "lead_owner": gs(lc_owner),
+                    "state": gs(lc_state),
+                    "attempted": gs(lc_attempted),
+                    "service_name_lead": gs(lc_service),
+                    "email": gs(lc_email),
+                    "remarks": gs(lc_remarks),
+                    "lead_name": gs(lc_name),
+                })
+                break
         return blank
+
+    def normalize_status(raw):
+        raw = str(raw).strip().lower()
+        if raw in ["active", "success", "completed", "paid"]:
+            return "Active"
+        if raw in ["inactive", "cancelled", "canceled", "failed", "refund", "refunded"]:
+            return "Inactive"
+        return raw.title() if raw else ""
 
     rows = []
     order_rows = []
 
     for _, row in attendees.iterrows():
-        mob = row["mobile_clean"]
+        mob = row.get("mobile_clean")
+        alt_mob = row.get("alt_mobile_clean")
+        possible_mobiles = [m for m in [mob, alt_mob] if m]
         sem_dt = row["seminar_date"]
 
         entry = {
             "name": str(row.get(c_name, "")).strip() if c_name else "",
-            "mobile": mob or "",
+            "mobile": mob or alt_mob or "",
+            "primary_mobile": mob or "",
+            "alternate_mobile": alt_mob or "",
             "place": str(row.get(c_place, "")).strip() if c_place else "",
             "trainer": str(row.get(c_trainer, "")).strip() if c_trainer else "",
             "seminar_date": sem_dt,
@@ -462,27 +489,26 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             "converted": False,
             "trainer_conv": "",
             "sales_rep": "",
+            "match_reason": "",
         }
 
-        valid = pd.DataFrame()
-        all_mobile_orders = pd.DataFrame()
-        if mob:
-            all_mobile_orders = conv[conv["mobile_clean"] == mob].sort_values("order_date_clean")
-        if mob and pd.notna(sem_dt):
-            valid = all_mobile_orders[all_mobile_orders["order_date_clean"] >= sem_dt].sort_values("order_date_clean")
+        all_mobile_orders = conv[conv["mobile_clean"].isin(possible_mobiles)].sort_values("order_date_clean") if possible_mobiles else pd.DataFrame()
+        valid = all_mobile_orders[
+            all_mobile_orders["order_date_clean"] >= sem_dt
+        ].sort_values("order_date_clean") if (not all_mobile_orders.empty and pd.notna(sem_dt)) else pd.DataFrame()
 
-        # Status should still come from conversion list even when the student is only seat-booked
-        # and does not qualify as a valid post-seminar conversion.
+        if not possible_mobiles:
+            entry["match_reason"] = "No mobile"
+        elif all_mobile_orders.empty:
+            entry["match_reason"] = "Mobile mismatch / no conversion row"
+        elif valid.empty:
+            entry["match_reason"] = "Date mismatch"
+        else:
+            entry["match_reason"] = "Matched"
+
         status_source = valid if not valid.empty else all_mobile_orders
         if not status_source.empty:
-            status_row = status_source.iloc[-1]
-            raw_status = str(status_row["status_clean"]).strip().lower()
-            if raw_status in ["active", "success", "completed", "paid"]:
-                entry["primary_status"] = "Active"
-            elif raw_status in ["inactive", "cancelled", "canceled", "failed", "refund", "refunded"]:
-                entry["primary_status"] = "Inactive"
-            else:
-                entry["primary_status"] = raw_status.title() if raw_status else ""
+            entry["primary_status"] = normalize_status(status_source.iloc[-1]["status_clean"])
 
         if not valid.empty:
             entry["converted"] = True
@@ -499,7 +525,9 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
             entry["sales_rep"] = str(primary["sales_rep_clean"]).strip()
 
             others = valid[valid.index != primary.name]
-            entry["additional_courses"] = list(others["service_name_clean"].dropna().unique())
+            entry["additional_courses"] = list(
+                others["service_name_clean"].dropna().astype(str).str.strip().unique()
+            )
             entry["additional_paid"] = float(others["paid_amount"].sum())
 
             for _, o in valid.iterrows():
@@ -516,36 +544,38 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
                     "total_due": float(o["total_due"]),
                     "total_gst": float(o["total_gst"]),
                     "payment_mode": str(o["payment_mode_clean"]).strip(),
-                    "status": str(o["status_clean"]).strip(),
+                    "status": normalize_status(o["status_clean"]),
                     "sales_rep": str(o["sales_rep_clean"]).strip(),
                     "trainer_conv": str(o["trainer_clean"]).strip(),
                     "is_primary": bool(o.name == primary.name),
                     "order_id": str(o["order_id_clean"]).strip(),
                 })
 
-        entry.update(get_lead(mob))
+        entry.update(get_lead(possible_mobiles))
         rows.append(entry)
 
     df = pd.DataFrame(rows)
     orders_df = pd.DataFrame(order_rows)
 
+    if df.empty:
+        df = pd.DataFrame(columns=[
+            "name", "mobile", "primary_mobile", "alternate_mobile", "place", "trainer",
+            "seminar_date", "session", "attended", "seat_book_amount", "seat_booked",
+            "primary_course", "primary_order_date", "primary_paid", "primary_due",
+            "primary_gst", "primary_mode", "primary_status", "additional_courses",
+            "additional_paid", "converted", "trainer_conv", "sales_rep",
+            "webinar_type", "lead_source", "campaign_name", "lead_status",
+            "stage_name", "lead_owner", "state", "attempted", "service_name_lead",
+            "email", "remarks", "lead_name", "match_reason"
+        ])
+
     for col in [
         "webinar_type", "lead_source", "campaign_name", "lead_status",
         "stage_name", "lead_owner", "state", "attempted",
-        "service_name_lead", "email", "remarks", "lead_name"
+        "service_name_lead", "email", "remarks", "lead_name", "match_reason"
     ]:
         if col not in df.columns:
             df[col] = ""
-
-    if df.empty:
-        df = pd.DataFrame(columns=[
-            "name", "mobile", "place", "trainer", "seminar_date", "session", "attended",
-            "primary_course", "primary_order_date", "primary_paid", "primary_due",
-            "primary_gst", "primary_mode", "primary_status", "additional_courses",
-            "additional_paid", "converted", "trainer_conv", "sales_rep", "webinar_type",
-            "lead_source", "campaign_name", "lead_status", "stage_name", "lead_owner",
-            "state", "attempted", "service_name_lead", "email", "remarks", "lead_name",
-        ])
 
     df["seminar_date_str"] = pd.to_datetime(df["seminar_date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("")
     df["primary_order_date_str"] = pd.to_datetime(df["primary_order_date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("")
