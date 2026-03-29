@@ -169,6 +169,7 @@ def parse_date_series(series):
     return pd.to_datetime(series, errors="coerce", dayfirst=True)
 
 
+
 def safe_numeric(series):
     return pd.to_numeric(series, errors="coerce").fillna(0)
 
@@ -247,7 +248,7 @@ def render_section_student_details(title, df, extra_cols=None, key_prefix="sec")
         "name", "mobile", "place", "seminar_date_str", "session", "trainer",
         "seat_book_amount", "converted", "primary_course", "primary_order_date_str",
         "primary_paid", "primary_due", "primary_status", "webinar_type", "lead_source", "lead_status",
-        "stage_name", "lead_owner"
+        "stage_name", "lead_owner", "match_reason"
     ]
     cols = [c for c in base_cols if c in df.columns]
     if extra_cols:
@@ -556,6 +557,8 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         orders_df["due_zero"] = safe_numeric(orders_df["total_due"]) <= 0
 
     return df, orders_df
+
+
 
 # ─────────────────────────────────────────────
 # LOGIN
@@ -1096,7 +1099,7 @@ def render_courses(fdf):
 # COMBO CROSS-SELL
 # ─────────────────────────────────────────────
 def render_combo(fdf, orders_df):
-    combo_buyers = fdf[fdf["primary_course"].str.contains("Power Of Trading", na=False, case=False)]
+    combo_buyers = fdf[fdf["primary_course"].str.contains(COMBO_MATCH, na=False, case=False)]
     with_other = combo_buyers[combo_buyers["additional_courses"].apply(lambda x: len(x) if isinstance(x, list) else 0) > 0]
 
     total_add_paid = with_other["additional_paid"].sum()
@@ -1132,7 +1135,7 @@ def render_combo(fdf, orders_df):
 
         c1, c2 = st.columns(2)
         with c1:
-            fig = px.bar(ac_counts, x="Count", y="additional_courses", orientation="h", title="Top Additional Courses After Combo", color_discrete_sequence=CHART_COLORS)
+            fig = px.bar(ac_counts, x="Count", y="additional_courses", orientation="h", title="Top Additional Courses After PTI Course", color_discrete_sequence=CHART_COLORS)
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, margin=dict(t=50, b=10, l=10, r=10), height=340, yaxis_title="")
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1149,7 +1152,7 @@ def render_combo(fdf, orders_df):
 
         c1, c2 = st.columns(2)
         with c1:
-            fig = px.bar(add_summary.head(10), x="Students", y="course", orientation="h", title="Top Additional Courses After Combo", color="Students", color_continuous_scale=["#1e2d4a", "#6366f1"])
+            fig = px.bar(add_summary.head(10), x="Students", y="course", orientation="h", title="Top Additional Courses After PTI Course", color="Students", color_continuous_scale=["#1e2d4a", "#6366f1"])
             fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, margin=dict(t=50, b=10, l=10, r=10), height=340, yaxis_title="")
             st.plotly_chart(fig, use_container_width=True)
 
