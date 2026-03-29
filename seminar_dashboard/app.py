@@ -163,11 +163,20 @@ def clean_mobile(x):
 
 
 def parse_date_series(series):
-    for fmt in ["%d-%b-%Y", "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%b-%d-%Y"]:
+    for fmt in [
+        "%d-%b-%Y",
+        "%d-%b-%y",   # ✅ ADD THIS LINE (CRITICAL FIX)
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%d-%m-%Y",
+        "%b-%d-%Y",
+        "%d %b %Y"
+    ]:
         try:
             return pd.to_datetime(series, format=fmt, errors="coerce")
-        except Exception:
+        except:
             pass
+
     return pd.to_datetime(series, dayfirst=True, errors="coerce")
 
 
