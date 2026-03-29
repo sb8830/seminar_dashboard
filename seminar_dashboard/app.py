@@ -502,9 +502,7 @@ def process_data(sem_bytes, conv_bytes, leads_bytes, sem_name, conv_name, leads_
         }
 
         all_mobile_orders = conv[conv["mobile_clean"].isin(possible_mobiles)].sort_values("order_date_clean") if possible_mobiles else pd.DataFrame()
-        valid = all_mobile_orders[
-            all_mobile_orders["order_date_clean"] >= sem_dt
-        ].sort_values("order_date_clean") if (not all_mobile_orders.empty and pd.notna(sem_dt)) else pd.DataFrame()
+        valid = all_mobile_orders.copy().sort_values("order_date_clean") if (not all_mobile_orders.empty and pd.notna(sem_dt)) else pd.DataFrame()
 
         if not possible_mobiles:
             entry["match_reason"] = "No mobile"
