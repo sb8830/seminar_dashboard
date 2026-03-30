@@ -15,6 +15,25 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+def normalize_status(status):
+    if not status:
+        return ""
+
+    s = str(status).strip().lower()
+
+    # Active / Converted cases
+    if s in ["paid", "completed", "success", "active", "converted"]:
+        return "Active"
+
+    # Partial payment
+    if s in ["partial", "partially paid", "in progress"]:
+        return "Partially Converted"
+
+    # Not converted / failed
+    if s in ["failed", "cancelled", "canceled", "inactive", "pending"]:
+        return "Inactive"
+
+    return status  # fallback (original value)
 
 # ─────────────────────────────────────────────
 # CUSTOM CSS
