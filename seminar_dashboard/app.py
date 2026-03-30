@@ -170,6 +170,7 @@ CHART_COLORS = [
     "#3b82f6", "#84cc16",
 ]
 COMBO_MATCH = "Power Of Trading & Investing Combo Course"
+PTI_MATCH = COMBO_MATCH
 
 # ─────────────────────────────────────────────
 # HELPERS
